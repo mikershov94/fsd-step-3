@@ -109,3 +109,240 @@
         и становится глобальной
     Замыкание можно создать только функцией
 
+4. Функция как объект
+
+    В JavaScript функция это значение с типом данных - объект.
+    Объект глобальной функции - window
+        alert('Hello') - метод глобального объекта
+        window.alert('Hello') - тоже самое
+
+    Рассмотрим функцию как объект.
+        Свойства:
+            - .name     содержит имя функции (контекстное имя)
+            - .length   количество переданных параметров (остаточные параметры не считаются)
+            - кастомные свойства
+                объявляются:
+                    function sayHi() {
+                        alert("Hi");
+
+                        // давайте посчитаем, сколько вызовов мы сделали
+                        sayHi.counter++;
+                    }
+        
+        Named Function Expression
+
+            let sayHi = function func(who) {
+                alert(`Hello ${who}`);
+            }
+
+            Особенности такого именования
+            - Оно позволяет функции ссылаться на себя же (без ошибок, в случае если она была изменена)
+            - Оно не доступно за пределами функции (можно использовать вместо замыканий)
+
+5. Объявление функции конструктором
+
+    let func = new Function([arg1, arg2,..., argN], functionBody);
+
+    Примеры.
+
+        let sum = new Function('a', 'b', 'return a + b');
+        alert( sum(1, 2) ); // 3
+
+        let sayHi = new Function('alert("Hello")');
+        sayHi(); // Hello
+
+    Это полезно, когда строку необходимо преобразовать в функцию.
+    Например, при получении с сервера функции в виде строки.
+
+    При таком объявлении [[Environment]] ссылается на глобальное окружение. (а не на внешнее)
+
+6. Планирование запуска
+
+    - setTimeout(func|code, [delay], [arg1], [arg2], ...)   вызывает функцию один раз через заданный интервал
+        возвращает идентификатор таймера
+        
+        Пример.
+            function sayHi(phrase, who) {
+                alert( phrase + ', ' + who );
+            }
+
+            setTimeout(sayHi, 1000, "Привет", "Джон"); // Привет, Джон
+                        ^здесь функция передается, а не вызывается (без скобок)
+
+        -- можно отменить запуск функции с помощью идентификатора таймера
+            let timerId = setTimeout(...);
+            clearTimeout(timerId);  //отмена отложенного вызова
+
+    - setInterval(func|code, [delay], [arg1], [arg2], ...)  вызывает функцию периодично через заданный интервал
+        возвращает идентификатор таймера
+
+        -- можно отменить запуск функции с помощью идентификатора таймера
+            let timerId = setInterval(...);
+            clearTimeout(timerId);  //отмена отложенного вызова
+
+    - рекурсивный setTimeout
+        запускает функцию несколько раз с заданным интервалом как setInterval
+
+        let timerId = setTimeout(function tick() {
+            alert('tick');
+            timerId = setTimeout(tick, 2000); // (*)
+        }, 2000);
+
+        Такой код более гибкий и использование его - хорошая практика!
+        Задержка между вызовами задаетс более точно!
+
+    - setTimeout c нулевой задержкой
+
+        setTimeout(func, 0) или setTimeout(func).
+
+        откладывает выполнение функции на минимально возможное время.
+        выполнение начинается сразу после выполнения предыдущего скрипта
+
+7. Декораторы и переадресация вызова
+
+    - прозрачное кэширование
+        это пример применения декоратора
+
+            function slow(x) {
+                // здесь могут быть ресурсоёмкие вычисления
+                alert(`Called with ${x}`);
+                return x;
+            }
+
+            function cachingDecorator(func) {   //функция-обёртка
+                let cache = new Map();
+
+                return function(x) {
+                    if (cache.has(x)) {    // если кеш содержит такой x,
+                        return cache.get(x); // читаем из него результат
+                    }
+
+                    let result = func(x); // иначе, вызываем функцию
+
+                    cache.set(x, result); // и кешируем (запоминаем) результат
+                    return result;
+                };
+            }
+
+            slow = cachingDecorator(slow);
+
+            alert( slow(1) ); // slow(1) кешируем
+            alert( "Again: " + slow(1) ); // возвращаем из кеша
+
+            alert( slow(2) ); // slow(2) кешируем
+            alert( "Again: " + slow(2) ); // возвращаем из кеша
+
+    - метод func.call(context, arg1, arg2, ...)
+        в случае если в функцию оборачивается метод объекта, то этот метод теряет контекст.
+        поэтому в этом случае контекст нужно передавать явно.
+        для этого используется данный метод
+        ...args можно расширить аргументы в ПЕРЕБИРАЕМЫЙ объект
+
+            let worker = {
+                someMethod() {
+                    return 1;
+                },
+
+                slow(x) {
+                    alert("Called with " + x);
+                    return x * this.someMethod(); // (*)
+                }
+            };
+
+            function cachingDecorator(func) {
+                let cache = new Map();
+                return function(x) {
+                    if (cache.has(x)) {
+                        return cache.get(x);
+                    }
+                    let result = func.call(this, x); // теперь 'this' передаётся правильно
+                    cache.set(x, result);
+                    return result;
+                };
+            }
+
+            worker.slow = cachingDecorator(worker.slow); // теперь сделаем её кеширующей
+
+            alert( worker.slow(2) ); // работает
+            alert( worker.slow(2) ); // работает, не вызывая первоначальную функцию (кешируется)
+
+    - метод func.apply(this, arguments)
+        arguments - псевдомассив аргументов
+        это единственное отличие от func.call()
+
+    - переадресация вызова
+        Передача всех аргументов вместе с контекстом другой функции
+
+            let wrapper = function() {
+                return func.apply(this, arguments);
+            };  
+
+    - заимствование метода
+        Пример.
+            function hash(args) {
+                return args[0] + ',' + args[1];
+            }
+
+            Хотим делать хэш для неопределенного количества аргументов
+
+            function hash(args) {
+                return args.join();     //не сработает
+            }                           //args - это псевдомассив, нет метода join
+
+            Используем переадресацию вызова
+
+            function hash() {
+                alert( [].join.call(arguments) ); // вот так сработает. Заимствование метода у массива
+            }
+
+8. Привязка контекста
+    При передаче функции другой функции в качестве коллбэка
+        часто происходит потеря this.
+
+    - решение 1. Создать замыкание
+        let user = {
+            firstName: "Вася",
+            sayHi() {
+                alert(`Привет, ${this.firstName}!`);
+            }
+        };
+
+        setTimeout(function() {
+            user.sayHi(); // Привет, Вася!
+        }, 1000);
+
+    - решение 2. Использовать метод .bind()
+
+        Синтаксис: let bound = func.bind(context, [arg1], [arg2], ...);
+            возвращает экзотический объект
+
+        Пример с this.
+            let user = {
+                firstName: "Вася"
+            };
+
+            function func() {
+                alert(this.firstName);
+            }
+
+            let funcUser = func.bind(user);
+            funcUser(); // Вася
+
+        Пример с args.
+            function mul(a, b) {
+                return a * b;
+            }
+
+            let double = mul.bind(null, 2); //фиксируем параметр по умолчанию
+
+            alert( double(3) ); // = mul(2, 3) = 6
+            alert( double(4) ); // = mul(2, 4) = 8
+            alert( double(5) ); // = mul(2, 5) = 10
+
+9. Стрелочные функции
+    
+    - У стрелочных функций нет this.
+        Если есть обращение к this - оно берется из внешнего окружения
+    - У стрелочных функций нет arguments
+    - Стрелочные функции не могут быть вызваны конструктором
+    - У стрелочных функций нет super()
