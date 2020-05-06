@@ -1,0 +1,109 @@
+СВОЙСТВА ОБЪЕКТА
+
+Свойство объекта - пара "ключ-значение" по прростому.
+Помимо этого свойство имеет дескриптор.
+В JavaScript два вида свойства
+    - data properties
+    - accessor properties
+
+Дескриптор свойства - структура данных, содержащая флаги.
+Иначе говоря свойство объекта - больше чем пара "ключ-значение"
+
+1. Флаги data properties
+
+    {
+        value: значение свойства,           //любой тип данных
+        writable: true|false,               //false - только для чтения
+        enumerable: true|false,             //false - не перебирается в цикле (toString())
+        configurable: true|false            //false - не изменяется дескриптор (путь в один конец)
+    }
+
+    - получить дескриптор Object.getOwnPropertyDescriptor(obj, propName)
+        возвращает объект - дескриптор свойства
+
+    - изменить дескриптор Object.defineProperty(obj, propName, descriptor)
+        
+    - глобальное запечатывание объекта
+        дескрипторы работают на уровне свойства
+        но есть функции, которые работат на уровне объекта
+
+        -- Object.preventExtensions(obj)    запрещает добавлять новые свойства в объект
+        -- Object.seal(obj)                 устанавливает configurable: false для всех свойств
+                                            запрещает добавлять/удалять свойства
+        -- Object.freeze(obj)               запрещает добавлять/удалять/изменять свойства
+                                            устанавливает 
+                                                configurable: false, writable: false для всех свойств
+        -- Object.isExtensible(obj)         возвращает false, если добавление свойств запрещено
+        -- Object.isSealed(obj)             возвращает true, если объек seal
+        -- Object.isFrozen(obj)             возвращает true, если объект freeze
+
+2. Флаги accessor properties
+
+    {
+        get: функция без аргументов,        //геттер
+        set: функция с 1 аргументом,        //сеттер
+        enumerable: true|false,             //false - не перебирается в цикле (toString())
+        configurable: true|false            //false - не изменяется дескриптор (путь в один конец)
+    }
+
+    - Геттер это функция, которая срабатывает при чтении свойства-акссессора
+
+        let user = {
+            name: "John",
+            surname: "Smith",
+
+            get fullName() {
+                return `${this.name} ${this.surname}`;
+            }
+        };
+
+        alert(user.fullName); // John Smith
+
+    - Сеттер это функция, которая срабатывает при записи в свойство-акссессор
+
+        let user = {
+            name: "John",
+            surname: "Smith",
+
+            get fullName() {
+                return `${this.name} ${this.surname}`;      //геттер
+            },
+
+            set fullName(value) {
+                [this.name, this.surname] = value.split(" ");   //сеттер
+            }
+        };
+
+        // set fullName запустится с данным значением
+        user.fullName = "Alice Cooper";
+
+        alert(user.name); // Alice
+        alert(user.surname); // Cooper
+
+    Геттеры/сеттеры можно использовать
+     как обёртки над «реальными» значениями свойств, 
+     чтобы получить больше контроля над операциями с ними.
+
+    Например, 
+     если мы хотим запретить устанавливать короткое имя для user, 
+     мы можем использовать сеттер name для проверки, 
+     а само значение хранить в отдельном свойстве _name:
+
+        let user = {
+            get name() {
+                return this._name;
+            },
+
+            set name(value) {
+                if (value.length < 4) {
+                alert("Имя слишком короткое, должно быть более 4 символов");
+                return;
+                }
+                this._name = value;
+            }
+        };
+
+        user.name = "Pete";
+        alert(user.name); // Pete
+
+        user.name = ""; // Имя слишком короткое...
