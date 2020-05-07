@@ -1,0 +1,170 @@
+РАБОТА С КЛАССАМИ
+
+1. Наследование классов
+
+    Наследование свойств и методов другого класса производится ключевым словом extends
+
+        class Animal {          //описываем родительский класс
+            constructor(name) {
+                this.speed = 0;
+                this.name = name;
+            }
+            run(speed) {
+                this.speed = speed;
+                alert(`${this.name} бежит со скоростью ${this.speed}.`);
+            }
+            stop() {
+                this.speed = 0;
+                alert(`${this.name} стоит.`);
+            }
+        }
+
+        class Rabbit extends Animal {   //описываем дочерний класс
+            hide() {
+                alert(`${this.name} прячется!`);
+            }
+        }
+
+    extends записывает в [[Prototype]] класса ссылку на прототип родительского класса
+
+2. Переопределение методов
+
+    - полное переопределение методов
+        достаточно определить в дочернем классе метод с тем же именем
+
+    - частичное переопределение методов
+        используем super.method()
+
+            class Animal {
+
+                constructor(name) {
+                    this.speed = 0;
+                    this.name = name;
+                }
+
+                run(speed) {
+                    this.speed = speed;
+                    alert(`${this.name} бежит со скоростью ${this.speed}.`);
+                }
+
+                stop() {
+                    this.speed = 0;
+                    alert(`${this.name} стоит.`);
+                }
+
+                }
+
+                class Rabbit extends Animal {
+                hide() {
+                    alert(`${this.name} прячется!`);
+                }
+
+                stop() {
+                    super.stop(); // вызываем родительский метод stop
+                    this.hide(); // и затем hide
+                }
+            }
+3. Переопределение конструктора
+    Если у дочернего класса конструктор не определен - то вызывается конструктор родительского класса.
+
+    Для переопредления конструктора в нем вызывается super()
+
+        class Rabbit extends Animal {
+
+            constructor(name, earLength) {
+                super(name);
+                this.earLength = earLength;
+            }
+
+            // ...
+        }
+
+4. Статиеские методы и свойства
+
+    Такие методы и свойства принадлежат КЛАССУ, а не объекту-прототипу
+    Иными словами, эти эти методы и свойства принадлежат функции-классу,
+        а не экземплярам объектов.
+    this - класс
+    Статиеские методы и свойства НАСЛЕДУЮТСЯ
+    
+    Используется ключевое свойство static
+
+    class Article {
+        constructor(title, date) {
+            this.title = title;
+            this.date = date;
+        }
+
+        static createTodays() {
+            // помним, что this = Article
+            return new this("Сегодняшний дайджест", new Date());
+        }
+    }
+
+    class Article {
+        static publisher = "Илья Кантор";
+    }
+
+    alert( Article.publisher ); // Илья Кантор
+
+5. Приватные и защищенные методы и свойства
+    В ООП интерфейсы делятся на 2 типа
+        - внутренние
+            -- приватные свойства и методы
+            -- защищенные приватные свойства и методы
+        - внешние
+            -- публичные свойства и методы
+            -- защищенные публичные свойства и методы
+
+    Все свойства и методы классов по-умолчанию - публичные (public).
+
+    - Приватные свойства и методы
+        обозначаются ключевым знаком #
+        -- доступны только в рамках класса
+        -- недоступны снаружи
+
+        class CoffeeMachine {
+            #waterLimit = 200;
+
+            #checkWater(value) {
+                if (value < 0) throw new Error("Отрицательный уровень воды");
+                if (value > this.#waterLimit) throw new Error("Слишком много воды");
+            }
+        }
+
+        let coffeeMachine = new CoffeeMachine();
+
+        // снаружи  нет доступа к приватным методам класса
+        coffeeMachine.#checkWater(); // Error
+        coffeeMachine.#waterLimit = 1000; // Error
+
+    - Защищенные свойства и методы
+        реализуются с помощью геттеров и сеттеров
+        начинается с префикса _ (_name)
+        -- доступны в рамках класса
+        -- доступны родительским и дочерним классам
+        -- недоступны снаружи
+
+        class CoffeeMachine {
+            _waterAmount = 0;
+
+            set waterAmount(value) {
+                if (value < 0) throw new Error("Отрицательное количество воды");
+                this._waterAmount = value;
+            }
+
+            get waterAmount() {
+                return this._waterAmount;
+            }
+
+            constructor(power) {
+                this._power = power;
+            }
+
+        }
+
+        // создаём новую кофеварку
+        let coffeeMachine = new CoffeeMachine(100);
+
+        // устанавливаем количество воды
+        coffeeMachine.waterAmount = -10; // Error: Отрицательное количество воды
