@@ -168,3 +168,164 @@
 
         // устанавливаем количество воды
         coffeeMachine.waterAmount = -10; // Error: Отрицательное количество воды
+
+6. Проверка instanceof
+
+    instanceof позволяет проверить объект
+        на принадлежность классу
+
+    obj instanceof Class - возвращает true|false
+
+    Возвращение типа:
+        let s = Object.prototype.toString;
+
+        console.log(s.call(123)) //[object Number]
+
+
+7. Примеси
+
+    Примесь - это класс, методы которого предназначены для использования в других классах
+    Используем примесь, чтобы добавить нетипичную функциональность классу
+
+    Пример.
+        // примесь
+        let sayHiMixin = {
+            sayHi() {
+                alert(`Привет, ${this.name}`);
+            },
+            sayBye() {
+                alert(`Пока, ${this.name}`);
+            }
+        };
+
+        // использование:
+        class User {
+            constructor(name) {
+                this.name = name;
+            }
+        }
+
+        // копируем методы
+        Object.assign(User.prototype, sayHiMixin); //Не наследование - КОПИРОВАНИЕ
+
+        // теперь User может сказать Привет
+        new User("Вася").sayHi(); // Привет, Вася!
+
+    Примеси могут наследовать друг друга.
+
+        let sayMixin = {
+            say(phrase) {
+                alert(phrase);
+            }
+        };
+
+        let sayHiMixin = {
+            __proto__: sayMixin, // (или мы можем использовать Object.create для задания прототипа)
+
+            sayHi() {
+                // вызываем метод родителя
+                super.say(`Привет, ${this.name}`); //метод ищется в прототипе самой примеси
+            },
+            sayBye() {
+                super.say(`Пока, ${this.name}`); //метод ищется в прототипе самой примеси
+            }
+        };
+
+        class User {
+            constructor(name) {
+                this.name = name;
+            }
+        }
+
+        // копируем методы
+        Object.assign(User.prototype, sayHiMixin);
+
+        // теперь User может сказать Привет
+        new User("Вася").sayHi(); // Привет, Вася!
+
+7.1 Использование примесей. EventMixin
+    - Примесь добавит метод .trigger(name, [data]) для генерации события. 
+        Аргумент name – это имя события, за которым могут следовать другие аргументы с данными для события.
+    - Также будет добавлен метод .on(name, handler),
+         который назначает обработчик для события с заданным именем. 
+        Обработчик будет вызван, когда произойдёт событие с указанным именем name,
+         и получит данные из .trigger.
+    - …и метод .off(name, handler), который удаляет обработчик указанного события.
+
+    После того, как все методы примеси будут добавлены,
+     объект user сможет сгенерировать событие "login" после входа пользователя в личный кабинет. 
+    А другой объект, к примеру, calendar сможет использовать это событие,
+     чтобы показывать зашедшему пользователю актуальный для него календарь.
+    
+        let eventMixin = {
+            /**
+            * Подписаться на событие, использование:
+            * menu.on('select', function(item) { ... }
+            */
+            on(eventName, handler) {
+                if (!this._eventHandlers) this._eventHandlers = {};
+                if (!this._eventHandlers[eventName]) {
+                    this._eventHandlers[eventName] = [];
+                }
+                this._eventHandlers[eventName].push(handler);
+            },
+
+            /**
+            * Отменить подписку, использование:
+            * menu.off('select', handler)
+            */
+            off(eventName, handler) {
+                let handlers = this._eventHandlers && this._eventHandlers[eventName];
+                if (!handlers) return;
+                for (let i = 0; i < handlers.length; i++) {
+                    if (handlers[i] === handler) {
+                        handlers.splice(i--, 1);
+                    }
+                }
+            },
+
+            /**
+            * Сгенерировать событие с указанным именем и данными
+            * this.trigger('select', data1, data2);
+            */
+            trigger(eventName, ...args) {
+                if (!this._eventHandlers || !this._eventHandlers[eventName]) {
+                    return; // обработчиков для этого события нет
+                }
+
+                // вызовем обработчики
+                this._eventHandlers[eventName].forEach(handler => handler.apply(this, args));
+            }
+        };
+
+    - .on(eventName, handler) – назначает функцию handler,
+             чтобы обработать событие с заданным именем.
+            Обработчики хранятся в свойстве _eventHandlers,
+             представляющим собой объект, в котором имя события является ключом,
+              а массив обработчиков – значением.
+
+    - .off(eventName, handler) – убирает функцию из списка обработчиков.
+
+    - .trigger(eventName, ...args) – генерирует событие: 
+            все назначенные обработчики из _eventHandlers[eventName] вызываются,
+             и ...args передаются им в качестве аргументов.
+    Использование.
+
+        class Menu {
+            choose(value) {
+                this.trigger("select", value);
+            }
+        }
+        // Добавим примесь с методами для событий
+        Object.assign(Menu.prototype, eventMixin);
+
+        let menu = new Menu();
+
+        // Добавить обработчик, который будет вызван при событии "select":
+        menu.on("select", value => alert(`Выбранное значение: ${value}`));
+
+        // Генерирует событие => обработчик выше запускается и выводит:
+        menu.choose("123"); // Выбранное значение: 123
+
+        
+            
